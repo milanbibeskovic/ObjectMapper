@@ -94,37 +94,24 @@ public final class Mapper<N: BaseMappable> {
 
 	/// Maps a JSON dictionary to an object that conforms to Mappable
 	public func map(JSON: [String: Any]) -> N? {
-		let map = Map(mappingType: .fromJSON, JSON: JSON, context: context, shouldIncludeNilValues: shouldIncludeNilValues)
-		
-		if let klass = N.self as? StaticMappable.Type { // Check if object is StaticMappable
+		let map = Map(mappingType: .fromJSON, JSON: JSON, context: context)
+
+		// check if object is StaticMappable
+		if let klass = N.self as? StaticMappable.Type {
 			if var object = klass.objectForMapping(map: map) as? N {
 				object.mapping(map: map)
 				return object
 			}
-		} else if let klass = N.self as? Mappable.Type { // Check if object is Mappable
+		}
+
+		// fall back to using init? to create N
+		if let klass = N.self as? Mappable.Type {
 			if var object = klass.init(map: map) as? N {
 				object.mapping(map: map)
 				return object
 			}
-		} else if let klass = N.self as? ImmutableMappable.Type { // Check if object is ImmutableMappable
-			do {
-				return try klass.init(map: map) as? N
-			} catch let error {
-				#if DEBUG
-				let exception: NSException
-				if let mapError = error as? MapError {
-					exception = NSException(name: .init(rawValue: "MapError"), reason: mapError.description, userInfo: nil)
-				} else {
-					exception = NSException(name: .init(rawValue: "ImmutableMappableError"), reason: error.localizedDescription, userInfo: nil)
-				}
-				exception.raise()
-				#endif
-			}
-		} else {
-			// Ensure BaseMappable is not implemented directly
-			assert(false, "BaseMappable should not be implemented directly. Please implement Mappable, StaticMappable or ImmutableMappable")
 		}
-		
+
 		return nil
 	}
 
